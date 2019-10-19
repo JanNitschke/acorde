@@ -3,22 +3,30 @@ import { Worker, MessagePort } from 'worker_threads';
 const LOAD_SUMMERY_WEIGHT = 0.99;
 const GROUP_ADDR_PRE = "g";
 const REACTOR_ADDR_PRE = "r";
+const WORKER_FILE_PATH = __dirname +"/worker.js";
 
 
 export class ActorMessage<T>{
     source: Addr;
     destination: Addr;
     content: T;
+    returnValue?: boolean;
+    error?: string;
 
-    constructor(source: Addr, destination: Addr, content: T) {
+    constructor(source: Addr, destination: Addr, content: T, returnValue?: boolean, error?: string) {
         this.source = source;
         this.destination = destination;
         this.content = content;
+        this.returnValue = returnValue;
+        this.error = error;
     }
 }
 
+export type SendMessageFunction<T> = (addr: Addr, msg: T ,raw?: true) => Promise<ActorMessage<any>|any>;
+
+
 export interface Handler<T> {
-    handle(msg: T, sendMessage: (addr: Addr, msg: any) => Promise<any>, updateStats: () => void): Promise<any>;
+    handle(msg: T, sendMessage: SendMessageFunction<any>, updateStats: () => void): Promise<any>;
 }
 
 export class Addr {
@@ -64,19 +72,38 @@ export class Actor {
 
     async destroy() {
         if(this.mod.end){
-            await Promise.resolve(this.mod.end());
+            await Promise.resolve(this.mod.end()).catch(console.error);
         }
     }
 
+    async sendMessage(addr: Addr, msg: any): Promise<any>;
+    async sendMessage(addr: Addr, msg: any, raw: true): Promise<ActorMessage<any>>;
 
-    sendMessage(addr: Addr, msg: any): Promise<any> {
-        return this.reactor.sendMessage(new ActorMessage(this.addr, addr, msg));
+    sendMessage(addr: Addr, msg: any, raw?: boolean): Promise<any> {
+        return new Promise(async (resolve, reject) => {
+            const result = await this.reactor.sendMessage(new ActorMessage(this.addr, addr, msg));
+            if(raw) {
+                resolve(result);
+            }else{
+                if(result.error) reject(result.error);
+                else resolve(result.content)
+            }
+        });
     }
+
 
     async onMessage(msg: ActorMessage<any>): Promise<ActorMessage<any>> {
         if (!this.isDestroyed) {
-            const result = await Promise.resolve(this.mod.handle(msg.content, this.sendMessage.bind(this), this.reactor.updateStats.bind(this.reactor)));
-            return new ActorMessage<any>(this.addr, msg.source, result);
+            try{
+                const result = await Promise.resolve(this.mod.handle(msg.content, this.sendMessage.bind(this), this.reactor.updateStats.bind(this.reactor)));
+                if(result !== undefined){
+                    return new ActorMessage<any>(this.addr, msg.source, result, true);
+                }else{
+                    return new ActorMessage<any>(this.addr, msg.source, msg.content, false);
+                }
+            }catch(ex){
+                return new ActorMessage<any>(this.addr, msg.source, msg.content, false, ex.stack);
+            }
         } else {
             throw new Error("Tryed to send a message to a destroyed actor");
         }
@@ -221,7 +248,7 @@ export class Reactor {
     lastSend = process.hrtime();
     lastMsgId = 1;
     lastActorId = 1;
-    msgResolvers: Map<number, (result: any) => void> = new Map();
+    msgResolvers: Map<number, {resolve:(result: any) => void, reject: (reason: any) => void}> = new Map();
     running = true;
     port: MessagePort;
 
@@ -268,7 +295,7 @@ export class Reactor {
     }
 
     async sendMessage<T>(msg: ActorMessage<T>): Promise<ActorMessage<any>> {
-        const isLocal = msg.destination.reactor = this.reactorAddr.reactor;
+        const isLocal = (msg.destination.reactor === this.reactorAddr.reactor);
         if (isLocal) {
             if (!msg.destination.actor) throw new Error("Recived unaddressed message");
             const actor = this.actors.get(msg.destination.actor);
@@ -279,9 +306,8 @@ export class Reactor {
         } else {
             const id = ++this.lastMsgId;
             this.port.postMessage(new ThreadActorMessage(msg, id));
-            return new Promise(resolve => {
-                this.msgResolvers.set(id, resolve);
-                console.log("added! count:",this.msgResolvers.size)
+            return new Promise((resolve, reject )=> {
+                this.msgResolvers.set(id, {resolve, reject});
             });
         }
     }
@@ -294,10 +320,10 @@ export class Reactor {
             return;
 
         } else if (msg instanceof ThreadActorResponse) {
-            const res = this.msgResolvers.get(msg.id);
-            if (!res) throw new Error("recived unrequested result");
+            const prm = this.msgResolvers.get(msg.id);
+            if (!prm) throw new Error("\n Reactor : " + this.reactorAddr.plain+ " recived unrequested result: \n " + JSON.stringify(msg) + " \n Map: " + JSON.stringify(new Array(this.msgResolvers.keys())));
             this.msgResolvers.delete(msg.id);
-            res(msg.msg);
+            prm.resolve(msg.msg);
             return;
 
         } else if (msg instanceof ThreadSpawnMessage) {
@@ -314,7 +340,6 @@ export class Reactor {
             actor.destroy();
             return;
         } else {
-            console.log(msg);
             throw new Error("Reactor recived unknown message type");
         }
     }
@@ -330,27 +355,25 @@ MM.      ,MP   MM     8M         MM    MM  8M"""""" `YMMMa.   MM      MM      ,p
 
 export class Orchestrator {
 
-    lastMsgId = 0;
+    lastMsgId = 100;
     lastActorId = 0;
     lastWorkerId = 0;
     lastGroupId = 0;
-    msgResolvers: Map<number, (result: any) => void> = new Map();
+    msgResolvers: Map<number, {resolve:(result: any) => void, reject: (reason: any) => void}> = new Map();
     actorResolvers: Map<number, (result: any) => void> = new Map();
     addr = new Addr("o");
     reactors: Map<string, Worker> = new Map();
     actorGroups: Map<string, ActorGroup> = new Map();
     reactorLoad: Map<string, {load: number, actors: number, queue: number}> = new Map();
 
-    workerURL: string;
     threads: number;
 
-    private constructor(threads: number, workerURL: string) {
+    private constructor(threads: number) {
         this.threads = threads;
-        this.workerURL = workerURL;
     }
 
-    static async create(threads: number, workerURL: string): Promise<Orchestrator> {
-        var orchestrator = new Orchestrator(threads, workerURL);
+    static async create(threads: number): Promise<Orchestrator> {
+        var orchestrator = new Orchestrator(threads);
         var prms = [];
         for (let index = 0; index < threads; index++) {
             prms.push(orchestrator.addReactor());
@@ -362,7 +385,7 @@ export class Orchestrator {
     addReactor(): Promise<Addr> {
         return new Promise((resolve) => {
             const addr = new Addr(REACTOR_ADDR_PRE + ++this.lastWorkerId);
-            var worker = new Worker(this.workerURL,{workerData: {addr: addr}});
+            var worker = new Worker(WORKER_FILE_PATH,{workerData: {addr: addr}});
             this.reactors.set(addr.reactor, worker);
             worker.on('message', (msg) => {
                 this.handleMessage(parseThreadMessage(msg), addr);
@@ -449,8 +472,8 @@ export class Orchestrator {
         if(!id){
             let id = ++this.lastMsgId;
             reactor.postMessage(new ThreadActorMessage(msg,id));
-            return new Promise(resolve => {
-                this.msgResolvers.set(id, resolve);
+            return new Promise((resolve, reject) => {
+                this.msgResolvers.set(id, {resolve, reject});
             });
         }else{
             if(msg.source.plain === this.addr.plain) throw new Error("Cannot forward un-id-ed message");
@@ -459,20 +482,24 @@ export class Orchestrator {
         }
     }
 
-    async sendMessage(addr: Addr | string, msg: any): Promise<any>{
-        if(typeof addr === "string"){
-            addr = new Addr(addr);
-        }
-        var actorMessage = new ActorMessage(this.addr, addr, msg);
-        var res = await this.sendMessageInt(actorMessage);
-        return res.content;
+    sendMessage(addr: Addr | string, msg: any): Promise<any>{
+       
+        return new Promise(async (resolve, reject) => {
+            if(typeof addr === "string"){
+                addr = new Addr(addr);
+            }
+            var actorMessage = new ActorMessage(this.addr, addr, msg);            
+                const result = await this.sendMessageInt(actorMessage);
+                if(result.error) reject(result.error);
+                else resolve(result.content)
+            });
     }
 
     async handleMessage(msg: any, workerAddr: Addr) {
         if (msg instanceof ThreadActorMessage) {
             const dst = msg.msg.destination;
             if(dst.reactor.startsWith(this.addr.reactor)) throw new Error("Orchestrator recived unrequested message");
-            await this.sendMessageInt(msg.msg);
+            await this.sendMessageInt(msg.msg, msg.id);
             return;
 
         } else if (msg instanceof ThreadActorResponse) {
@@ -481,10 +508,10 @@ export class Orchestrator {
                 reactor.postMessage(msg);
                 return;
             }else{
-                const res = this.msgResolvers.get(msg.id);
-                if (!res) throw new Error("recived unrequested result");
+                const prm = this.msgResolvers.get(msg.id);
+                if (!prm) throw new Error("recived unrequested result");
                 this.msgResolvers.delete(msg.id);
-                res(msg.msg);
+                prm.resolve(msg.msg);
                 return;
             }
         } else if (msg instanceof ThreadSpawnedMessage) {
@@ -498,7 +525,6 @@ export class Orchestrator {
             this.reactorLoad.set(workerAddr.reactor, { load: msg.load, queue: msg.queue, actors: msg.actors} );
             return;
         } else{
-            console.log(msg);
             throw new Error("Orchestratpr recived unknown message type");
         }
     }

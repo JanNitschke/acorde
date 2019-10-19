@@ -1,10 +1,11 @@
 {
-  "name": "nodeact",
+  "name": "acorde",
   "version": "1.0.0",
-  "description": "Multithreaded nodejs actor library",
-  "main": "index.js",
+  "description": "ACtor wORkers in noDE - Multithreaded nodejs actor library",
+  "main": "lib/mod.js",
   "scripts": {
     "tsc": "tsc",
+    "build" : "tsc",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Jan Nitschke",
@@ -12,5 +13,6 @@
   "devDependencies": {
     "@types/node": "^12.11.1",
     "typescript": "^3.6.4"
-  }
+  },
+  "types": "lib/mod.d.ts"
 }

@@ -6,7 +6,7 @@ var run = async() => {
      * @typedef {import('./../dist/mod.js').Orchestrator} Orchestrator
      * @type {Orchestrator} orchestrator
      */
-    const orchestrator = await Orchestrator.create(8, "./dist/worker.js");    
+    const orchestrator = await Orchestrator.create(8);    
     const pongAddr = await orchestrator.addActor("./../test/pong", {});
     const primeAddr = await orchestrator.addActorGroup("./../test/primeActor", {});
 
