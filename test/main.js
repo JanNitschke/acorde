@@ -1,9 +1,9 @@
-const { Orchestrator } = require('./../dist/mod')
+const { Orchestrator } = require('./../lib/mod')
 
 
 var run = async() => {
     /**
-     * @typedef {import('./../dist/mod.js').Orchestrator} Orchestrator
+     * @typedef {import('./../lib/mod.js').Orchestrator} Orchestrator
      * @type {Orchestrator} orchestrator
      */
     const orchestrator = await Orchestrator.create(8);    

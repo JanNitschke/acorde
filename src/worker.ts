@@ -1,6 +1,6 @@
-import { Reactor, parseThreadMessage } from './mod';
 import { parentPort, workerData } from 'worker_threads';
- 
+import { Reactor } from './reactor';
+import { parseThreadMessage } from './threads';
 
 if(parentPort === null){
     throw new Error("The worker can only be used in a worker thread"); 
