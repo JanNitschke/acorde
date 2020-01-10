@@ -114,18 +114,14 @@ export class Orchestrator extends EventEmitter{
             let lowestAddr: Addr | undefined;
     
             group.addrs.forEach(addr => {
-                let load;
-                if(addr.reactor == this.addr.reactor){
-                    load = 0;
-                }else{
-                    const wl = this.reactorLoad.get(addr.reactor);
-                    if(wl === undefined) throw new Error("Group reactor does not exist");
-                     load = wl.load + wl.queue * 0.001 + Math.random() * 0.01;
-                    if(load < lowestValue){
-                        lowestAddr = addr;
-                        lowestValue = load;
-                    }
+                const wl = this.reactorLoad.get(addr.reactor);
+                if(wl === undefined) throw new Error("Group reactor does not exist");
+                    const load = wl.load + wl.queue * 0.001 + Math.random() * 0.01;
+                if(load < lowestValue){
+                    lowestAddr = addr;
+                    lowestValue = load;
                 }
+                
             });
             if(lowestAddr === undefined) throw new Error("Group reactor does not exist");
             const r = this.reactors.get(lowestAddr.reactor);
@@ -166,8 +162,11 @@ export class Orchestrator extends EventEmitter{
     async handleMessage(msg: any, workerAddr: Addr) {
         if (msg instanceof ThreadActorMessage) {
             const dst = msg.msg.destination;
-            if(dst.reactor.startsWith(this.addr.reactor)) this.emit("msg", msg);
-            await this.sendMessageInt(msg.msg, msg.id);
+            if(dst.reactor.startsWith(this.addr.reactor)){
+                this.emit("msg", msg);
+            }else{
+                await this.sendMessageInt(msg.msg, msg.id);
+            }
             return;
 
         } else if (msg instanceof ThreadActorResponse) {
