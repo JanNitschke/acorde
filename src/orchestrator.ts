@@ -114,12 +114,17 @@ export class Orchestrator extends EventEmitter{
             let lowestAddr: Addr | undefined;
     
             group.addrs.forEach(addr => {
-                const wl = this.reactorLoad.get(addr.reactor);
-                if(wl === undefined) throw new Error("Group reactor does not exist");
-                const load = wl.load + wl.queue * 0.001 + Math.random() * 0.01;
-                if(load < lowestValue){
-                    lowestAddr = addr;
-                    lowestValue = load;
+                let load;
+                if(addr.reactor == this.addr.reactor){
+                    load = 0;
+                }else{
+                    const wl = this.reactorLoad.get(addr.reactor);
+                    if(wl === undefined) throw new Error("Group reactor does not exist");
+                     load = wl.load + wl.queue * 0.001 + Math.random() * 0.01;
+                    if(load < lowestValue){
+                        lowestAddr = addr;
+                        lowestValue = load;
+                    }
                 }
             });
             if(lowestAddr === undefined) throw new Error("Group reactor does not exist");
