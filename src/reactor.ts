@@ -12,7 +12,6 @@ import { LOAD_SUMMERY_WEIGHT } from "./mod";
   MM   `Mb. YM.    , 8M   MM  YM.    ,   MM    YA.   ,A9   MM     
 .JMML. .JMM. `Mbmmd' `Moo9^Yo. YMbmd'    `Mbmo  `Ybmd9'  .JMM*/
 
-
 export class Reactor {
     actors: Map<string, Actor> = new Map();
     reactorAddr: Addr;

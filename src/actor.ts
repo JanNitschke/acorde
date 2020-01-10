@@ -15,7 +15,7 @@ export class Actor {
 
     async start(props: any) {
         if(this.mod.start){
-            await Promise.resolve(this.mod.start(props));
+            await Promise.resolve(this.mod.start(props, this.addr));
         }
     }
 
@@ -96,7 +96,7 @@ export interface Handler<T> {
 
 
 export type ActorModule = {
-    start?: (props: any) => Promise<void>;
+    start?: (props: any, addr: Addr) => Promise<void>;
     handle: (msg: any, sendMessage: (addr: Addr, msg: any) => Promise<any>, updateStats: () => void) => any;
     end?: () => Promise<void>
 }
