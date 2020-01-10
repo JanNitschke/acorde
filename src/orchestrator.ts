@@ -3,6 +3,7 @@ import { Addr } from "./addr";
 import { ActorGroup, ActorMessage } from "./actor";
 import { Worker, MessagePort } from 'worker_threads';
 import { parseThreadMessage, ThreadSpawnMessage, ThreadActorMessage, ThreadActorResponse, ThreadSpawnedMessage, ThreadStatsMessage } from './threads';
+import { EventEmitter } from 'events';
 
 
 
@@ -14,7 +15,7 @@ MM.      ,MP   MM     8M         MM    MM  8M"""""" `YMMMa.   MM      MM      ,p
 `Mb.    ,dP'   MM     YM.    ,   MM    MM  YM.    , L.   I8   MM      MM     8M   MM    MM    YA.   ,A9   MM     
   `"bmmd"'   .JMML.    YMbmd'  .JMML  JMML. `Mbmmd' M9mmmP'   `Mbmo .JMML.   `Moo9^Yo.  `Mbmo  `Ybmd9'  .JMM*/
 
-export class Orchestrator {
+export class Orchestrator extends EventEmitter{
 
     lastMsgId = 100;
     lastActorId = 0;
@@ -30,6 +31,7 @@ export class Orchestrator {
     threads: number;
 
     private constructor(threads: number) {
+        super();
         this.threads = threads;
     }
 
@@ -159,7 +161,7 @@ export class Orchestrator {
     async handleMessage(msg: any, workerAddr: Addr) {
         if (msg instanceof ThreadActorMessage) {
             const dst = msg.msg.destination;
-            if(dst.reactor.startsWith(this.addr.reactor)) throw new Error("Orchestrator recived unrequested message");
+            if(dst.reactor.startsWith(this.addr.reactor)) this.emit("msg", msg);
             await this.sendMessageInt(msg.msg, msg.id);
             return;
 

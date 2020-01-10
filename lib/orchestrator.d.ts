@@ -2,7 +2,8 @@
 import { Addr } from "./addr";
 import { ActorGroup, ActorMessage } from "./actor";
 import { Worker } from 'worker_threads';
-export declare class Orchestrator {
+import { EventEmitter } from 'events';
+export declare class Orchestrator extends EventEmitter {
     lastMsgId: number;
     lastActorId: number;
     lastWorkerId: number;
