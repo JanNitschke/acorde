@@ -1,4 +1,4 @@
-import { Addr } from "./Addr";
+import { Addr } from "./addr";
 import { ActorMessage } from "./actor";
 export declare enum ThreadMessageType {
     Spawn = 0,

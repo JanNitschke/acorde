@@ -1,7 +1,7 @@
 /// <reference types="node" />
 import { MessagePort } from 'worker_threads';
 import { Actor, ActorMessage } from "./actor";
-import { Addr } from "./Addr";
+import { Addr } from "./addr";
 import { ThreadMessage } from "./threads";
 export declare class Reactor {
     actors: Map<string, Actor>;

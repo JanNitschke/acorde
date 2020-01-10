@@ -1,4 +1,4 @@
-import { Addr } from "./Addr";
+import { Addr } from "./addr";
 import { Reactor } from "./reactor";
 
 export class Actor {
@@ -96,7 +96,7 @@ export interface Handler<T> {
 
 
 export type ActorModule = {
-    start?: (props: any, addr: Actor) => Promise<void>;
+    start?: (props: any, act: Actor) => Promise<void>;
     handle: (msg: any, sendMessage: (addr: Addr, msg: any) => Promise<any>, updateStats: () => void) => any;
     end?: () => Promise<void>
 }

@@ -1,5 +1,5 @@
 import { REACTOR_ADDR_PRE, WORKER_FILE_PATH, GROUP_ADDR_PRE } from './mod';
-import { Addr } from "./Addr";
+import { Addr } from "./addr";
 import { ActorGroup, ActorMessage } from "./actor";
 import { Worker, MessagePort } from 'worker_threads';
 import { parseThreadMessage, ThreadSpawnMessage, ThreadActorMessage, ThreadActorResponse, ThreadSpawnedMessage, ThreadStatsMessage } from './threads';

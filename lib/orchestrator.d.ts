@@ -1,5 +1,5 @@
 /// <reference types="node" />
-import { Addr } from "./Addr";
+import { Addr } from "./addr";
 import { ActorGroup, ActorMessage } from "./actor";
 import { Worker } from 'worker_threads';
 export declare class Orchestrator {

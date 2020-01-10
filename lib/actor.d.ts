@@ -1,4 +1,4 @@
-import { Addr } from "./Addr";
+import { Addr } from "./addr";
 import { Reactor } from "./reactor";
 export declare class Actor {
     mod: ActorModule;
@@ -26,7 +26,7 @@ export interface Handler<T> {
     handle(msg: T, sendMessage: SendMessageFunction<any>, updateStats: () => void): Promise<any>;
 }
 export declare type ActorModule = {
-    start?: (props: any, addr: Actor) => Promise<void>;
+    start?: (props: any, act: Actor) => Promise<void>;
     handle: (msg: any, sendMessage: (addr: Addr, msg: any) => Promise<any>, updateStats: () => void) => any;
     end?: () => Promise<void>;
 };

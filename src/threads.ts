@@ -1,4 +1,4 @@
-import { Addr } from "./Addr";
+import { Addr } from "./addr";
 import { ActorMessage } from "./actor";
 
 /*P""MM""YMM `7MM                                        `7MM  `7MMM.     ,MMF'                                                             

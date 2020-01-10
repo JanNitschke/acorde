@@ -1,6 +1,6 @@
 import { parentPort, workerData, MessagePort } from 'worker_threads';
 import { Actor, ActorModule, ActorMessage } from "./actor";
-import { Addr } from "./Addr";
+import { Addr } from "./addr";
 import { ThreadMessage,ThreadStatsMessage, ThreadActorMessage, ThreadSpawnMessage, ThreadDestroyMessage, ThreadSpawnedMessage, ThreadActorResponse } from "./threads";
 import { LOAD_SUMMERY_WEIGHT } from "./mod";
 
